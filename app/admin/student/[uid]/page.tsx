@@ -416,6 +416,21 @@ setStudentName(
       setSaving(false);
     }
   }
+  setSabak("");
+setSabakDhor("");
+setDhor("");
+
+setSabakReadQuality("");
+setSabakReadNotes("");
+
+setSabakDhorReadQuality("");
+setSabakDhorReadNotes("");
+
+setDhorReadQuality("");
+setDhorReadNotes("");
+
+setSabakDhorMistakes("");
+setDhorMistakes("");
 
   if (checking) {
     return (
