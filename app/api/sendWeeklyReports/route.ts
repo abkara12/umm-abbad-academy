@@ -1,69 +1,61 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import type { NextApiRequest, NextApiResponse } from "next";
+import admin from "firebase-admin";
 
-export async function GET() {
-  const studentsSnap = await getDocs(collection(db, "users"));
+// Environment variables
+const projectId = process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-  const today = new Date();
-  const lastWeek = new Date();
-  lastWeek.setDate(today.getDate() - 7);
-
-  const reports: any[] = [];
-
-  for (const studentDoc of studentsSnap.docs) {
-    const student = studentDoc.data();
-
-    if (student.role !== "student") continue;
-
-    const logsSnap = await getDocs(
-      collection(db, "users", studentDoc.id, "logs")
-    );
-
-    const weeklyLogs: any[] = [];
-
-    logsSnap.forEach((doc) => {
-      const log = doc.data();
-      const logDate = new Date(log.dateKey);
-
-      if (logDate >= lastWeek) {
-        weeklyLogs.push(log);
-      }
-    });
-
-    const report = generateReport(student.username, weeklyLogs);
-
-    reports.push({
-      student: student.username,
-      parentPhone: student.parentPhone,
-      report
-    });
-  }
-
-  return Response.json({ reports });
+if (!projectId || !clientEmail || !privateKey) {
+  throw new Error("Firebase environment variables are not set.");
 }
 
-function generateReport(studentName: string, logs: any[]) {
-  let message = `Assalaamu Alaikum\n\n`;
-  message += `Weekly Hifdh Report\n`;
-  message += `Student: ${studentName}\n\n`;
-
-  logs.forEach((log) => {
-    message += `📅 ${log.dateKey}\n`;
-
-    if (log.currentSabak)
-      message += `Sabak: ${log.currentSabak}\n`;
-
-    if (log.currentSabakReadQuality)
-      message += `Quality: ${log.currentSabakReadQuality}\n`;
-
-    if (log.currentSabakReadNotes)
-      message += `Notes: ${log.currentSabakReadNotes}\n`;
-
-    if (log.currentDhor)
-      message += `Dhor: ${log.currentDhor}\n`;
-
-    message += `\n`;
+// Initialize Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId,
+      clientEmail,
+      privateKey,
+    }),
   });
+}
 
-  return message;
+const db = admin.firestore();
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try {
+    const usersSnapshot = await db.collection("users").get();
+    const reports = [];
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+
+      const logsSnapshot = await db
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("logs")
+        .where("date", ">=", sevenDaysAgo)
+        .get();
+
+      if (!logsSnapshot.empty) {
+        const reportText = `Assalaamu Alaikum\n\nWeekly Hifdh Report\nStudent: ${userData.name}\n\n📅 ${new Date().toLocaleDateString()}\n`;
+        reports.push({
+          student: userData.name,
+          parentPhone: userData.parentPhone,
+          report: reportText,
+        });
+      }
+    }
+
+    res.status(200).json({ reports });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 }
