@@ -1,7 +1,7 @@
 // /app/api/sendWeeklyReports/route.ts
 import admin from "firebase-admin";
 
-// ----------------- Initialize Admin SDK -----------------
+// Initialize Admin SDK
 const projectId = process.env.FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -22,7 +22,6 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// ----------------- API Route -----------------
 export async function GET() {
   try {
     const usersSnapshot = await db.collection("users").get();
@@ -34,7 +33,6 @@ export async function GET() {
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
 
-      // Get all logs for this user
       const logsSnapshot = await db
         .collection("users")
         .doc(userDoc.id)
@@ -50,7 +48,7 @@ export async function GET() {
       });
 
       if (recentLogs.length > 0 || userData.weeklyGoal) {
-        // Build detailed report
+        // Build detailed report for all recent logs
         const logDetails = recentLogs.map((logDoc) => {
           const logData = logDoc.data();
           return `
@@ -62,7 +60,7 @@ Sabak Extra Notes: ${logData.currentSabakReadNotes || "-"}
 `;
         }).join("\n");
 
-        // Add weekly goal info
+        // Weekly goal info from userData
         const weeklyGoalText = `
 Weekly Goal: ${userData.weeklyGoal || "-"}
 Goal Start Date: ${userData.weeklyGoalStartDateKey || "-"}
