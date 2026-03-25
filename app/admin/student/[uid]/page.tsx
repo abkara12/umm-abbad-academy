@@ -218,7 +218,7 @@ const [studentName, setStudentName] = useState("");
 
   // weekly goal can be set only once per week
 const goalLocked =
-  !markGoalCompleted && !!weeklyGoalCompletedDateKey;
+  !!weeklyGoal && !weeklyGoalCompletedDateKey;
 
   const goalAlreadyCompleted =
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
@@ -323,28 +323,26 @@ async function handleSave(e: React.FormEvent) {
     let nextDuration: number | null = weeklyGoalDurationDays ?? null;
 
     if (nextGoal) {
-     // Only set goal if none exists OR previous is completed
-const canSetNewGoal = !nextGoal || nextCompletedKey;
+  // 1. First time setting goal
+  if (!nextStartKey) {
+    nextStartKey = dateKey;
+  }
 
-if (nextGoal && !nextStartKey) {
-  // First time goal is set
-  nextStartKey = dateKey;
+  // 2. Mark as completed
+  if (markGoalCompleted && !nextCompletedKey) {
+    const startKey = nextStartKey || dateKey;
+    nextCompletedKey = dateKey;
+    nextDuration = diffDaysInclusive(startKey, dateKey);
+  }
+
+  // 3. ✅ If goal is already completed AND ustad types a NEW goal
+  if (nextCompletedKey && !markGoalCompleted) {
+    // This means: previous goal is done → start fresh
+    nextStartKey = dateKey;
+    nextCompletedKey = "";
+    nextDuration = null;
+  }
 }
-
-// ✅ Only allow setting a new weekly goal if previous goal is completed
-if (nextGoal && weeklyGoalCompletedDateKey && !markGoalCompleted) {
-  // Previous goal is completed, allow new goal
-  nextStartKey = dateKey;
-  nextCompletedKey = "";
-  nextDuration = null;
-}
-
-      if (markGoalCompleted && !nextCompletedKey) {
-        const startKey = nextStartKey || dateKey;
-        nextCompletedKey = dateKey;
-        nextDuration = diffDaysInclusive(startKey, dateKey); // ✅ call the function, don’t pass it
-      }
-    }
 
     // ---- 1) Save daily log ----
     await setDoc(
