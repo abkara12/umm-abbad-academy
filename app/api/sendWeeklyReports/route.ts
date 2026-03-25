@@ -154,13 +154,13 @@ Powered by The Hifdh Journal`;
         report: reportText.trim(),
       });
 
-      if (userData.parentPhone) {
-        await twilioClient.messages.create({
-          from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
-          to: `whatsapp:${userData.parentPhone}`,
-          body: reportText.trim(),
-        });
-      }
+      // if (userData.parentPhone) {
+      //   await twilioClient.messages.create({
+      //     from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+      //     to: `whatsapp:${userData.parentPhone}`,
+      //     body: reportText.trim(),
+      //   });
+      // }
     }
 
     return new Response(JSON.stringify({ reports, sent: true }), {
