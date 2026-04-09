@@ -53,7 +53,6 @@ export async function GET() {
 
 *Weekly Hifdh Report*
 *Student:* ${userData.username}
-*Ustad:* Moulana Shaheed Bhabha
 *Month:* ${monthLabel}
 
 `;
