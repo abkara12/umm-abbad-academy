@@ -23,13 +23,17 @@ function friendlySignupError(code?: string) {
   }
 }
 
+type AccountType = "parent" | "ustad";
+
 export default function SignupPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
+  const [accountType, setAccountType] = useState<AccountType>("parent");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -43,15 +47,36 @@ export default function SignupPage() {
       const cleanEmail = email.trim().toLowerCase();
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
 
+      const baseData = {
+        email: (cred.user.email ?? cleanEmail).toLowerCase(),
+        username: username.trim(),
+        phone: phone.trim(),
+        accountType,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      if (accountType === "parent") {
+        await setDoc(
+          doc(db, "users", cred.user.uid),
+          {
+            ...baseData,
+            role: "student",
+            profileCompleted: false,
+          },
+          { merge: true }
+        );
+
+        router.push("/complete-profile");
+        return;
+      }
+
       await setDoc(
         doc(db, "users", cred.user.uid),
         {
-          email: (cred.user.email ?? cleanEmail).toLowerCase(),
-          username: username.trim(),
-          phone: phone.trim(),
-          role: "student",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          ...baseData,
+          role: "pending_admin",
+          profileCompleted: true,
         },
         { merge: true }
       );
@@ -96,11 +121,11 @@ export default function SignupPage() {
                 Create your account
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Create your account to access the Hifdh Journal system.
+                Choose your account type and create your Hifdh Journal account.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {["Secure login", "Private access", "Easy setup", "Clean dashboard"].map((t) => (
+                {["Secure login", "Easy setup", "Clean dashboard", "Structured system"].map((t) => (
                   <div
                     key={t}
                     className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-4 text-sm font-medium"
@@ -137,13 +162,46 @@ export default function SignupPage() {
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
+                  <label className="text-sm font-medium text-gray-800">Account Type</label>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("parent")}
+                      className={`h-12 rounded-2xl border text-sm font-semibold transition-colors ${
+                        accountType === "parent"
+                          ? "border-black bg-black text-white"
+                          : "border-gray-300 bg-white/80 text-gray-800 hover:bg-white"
+                      }`}
+                    >
+                      Parent
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("ustad")}
+                      className={`h-12 rounded-2xl border text-sm font-semibold transition-colors ${
+                        accountType === "ustad"
+                          ? "border-black bg-black text-white"
+                          : "border-gray-300 bg-white/80 text-gray-800 hover:bg-white"
+                      }`}
+                    >
+                      Ustad / Teacher
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="text-sm font-medium text-gray-800">Full Name</label>
                   <input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     type="text"
                     required
-                    placeholder="e.g. Ustadh Muhammad Ahmed"
+                    placeholder={
+                      accountType === "parent"
+                        ? "e.g. Ahmed Khan"
+                        : "e.g. Ustadh Muhammad Ahmed"
+                    }
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
@@ -202,7 +260,9 @@ export default function SignupPage() {
                 </button>
 
                 <div className="text-sm text-gray-600 text-center">
-                  Parent details can be added later for each student profile.
+                  {accountType === "parent"
+                    ? "You will add the child details on the next step."
+                    : "Your account will be created and you can be made admin afterwards."}
                 </div>
               </form>
 

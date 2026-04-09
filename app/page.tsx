@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
+import { useRouter } from "next/navigation";
 
 /* ---------------- PWA Install Prompt (ALWAYS shows until installed) ---------------- */
 type BeforeInstallPromptEvent = Event & {
@@ -377,6 +378,10 @@ function MenuRow({
 }
 
 export default function Home() {
+
+
+  const router = useRouter();
+
   /* ✅ mobile menu state */
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuState, setMenuState] = useState<"open" | "closed">("closed");
@@ -386,23 +391,39 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      setIsAdmin(false);
+  const unsub = onAuthStateChanged(auth, async (u) => {
+    setUser(u);
+    setIsAdmin(false);
 
-      if (!u) return;
+    if (!u) return;
 
-      try {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        const role = snap.exists() ? (snap.data() as any).role : null;
-        setIsAdmin(role === "admin");
-      } catch {
-        setIsAdmin(false);
+    try {
+      const snap = await getDoc(doc(db, "users", u.uid));
+
+      if (!snap.exists()) return;
+
+      const data = snap.data() as any;
+      const role = data?.role ?? null;
+      const accountType = data?.accountType ?? "parent";
+      const profileCompleted = data?.profileCompleted === true;
+
+      setIsAdmin(role === "admin");
+
+      if (role === "admin") return;
+
+      if (accountType === "ustad" || role === "pending_admin") return;
+
+      if (accountType === "parent" && !profileCompleted) {
+        router.push("/complete-profile");
+        return;
       }
-    });
+    } catch {
+      setIsAdmin(false);
+    }
+  });
 
-    return () => unsub();
-  }, []);
+  return () => unsub();
+}, [router]);
 
   const footerLinks = useMemo(
     () => [
